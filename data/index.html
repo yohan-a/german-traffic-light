@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Traffic Light Control</title>
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+            background: linear-gradient(#87CEEB, #B0E0E6);
+        }
+        .sun {
+            position: absolute;
+            top: 5%;
+            left: 5%;
+            width: 80px;
+            height: 80px;
+            background: #FFD700;
+            border-radius: 50%;
+            box-shadow: 0 0 40px 10px #FFD700;
+        }
+        .grass {
+            position: absolute; bottom: 0;
+            width: 100%; height: 30%;
+            background: #2ecc71;
+        }
+        .road {
+            position: absolute; bottom: 0;
+            width: 100%; height: 30%;
+            background: #444;
+            /* This clip-path creates the perspective of the road coming towards you */
+            clip-path: polygon(20% 0, 80% 0, 100% 100%, 0% 100%);
+        }
+        .road-lines {
+            position: absolute; top: 50%; left: 0;
+            transform: translateY(-50%);
+            width: 100%; height: 4px;
+            background: repeating-linear-gradient(to right, #ccc, #ccc 30px, transparent 30px, transparent 60px);
+        }
+        .cloud {
+            position: absolute; background: white;
+            border-radius: 50%; opacity: 0.9;
+            animation: drift 80s linear infinite;
+        }
+        .cloud.c1 { top: 10%; left: 10%; width: 150px; height: 50px; animation-delay: -10s; }
+        .cloud.c2 { top: 20%; left: 70%; width: 200px; height: 60px; animation-duration: 65s; animation-delay: -30s; }
+        .cloud::before, .cloud::after { content: ''; position: absolute; background: white; border-radius: 50%; }
+        .cloud::before { top: -25px; left: 20px; width: 80px; height: 80px; }
+        .cloud::after { top: -15px; right: 30px; width: 60px; height: 60px; }
+        @keyframes drift { from { transform: translateX(-20vw); } to { transform: translateX(120vw); } }
+
+        /* Tree Styles */
+        .tree {
+            position: absolute;
+            z-index: 8; /* Sit behind the pole */
+        }
+        .tree .trunk {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
+            height: 80px;
+            background: #8B4513; /* SaddleBrown */
+        }
+        .tree .leaves {
+            position: absolute;
+            bottom: 60px; /* Position leaves on top of the trunk */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 100px;
+            background: #228B22; /* ForestGreen */
+            border-radius: 50%;
+        }
+        .tree.t1 {
+            bottom: 30%;
+            left: 5%;
+        }
+        .tree.t2 {
+            bottom: 30%;
+            right: 2%;
+        }
+
+        .pole {
+            position: absolute; bottom: 28%; left: 50%;
+            transform: translateX(-50%);
+            width: 18px; height: 42%;
+            background: linear-gradient(#555, #333);
+            border-radius: 5px 5px 0 0;
+            z-index: 9;
+        }
+        .traffic-light {
+            position: absolute; top: 28%; left: 50%;
+            transform: translateX(-50%);
+            background-color: #222; padding: 10px;
+            border-radius: 10px; border: 4px solid #111;
+            display: flex; flex-direction: column; gap: 8px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+        .light {
+            width: 40px; height: 40px;
+            border-radius: 50%; background-color: #444;
+            border: 2px solid #000; transition: all 0.2s ease-in-out;
+            opacity: 0.3; cursor: pointer;
+        }
+        .light:hover { opacity: 0.6; }
+        .light.on { opacity: 1; }
+        .light.red.on { background-color: #ff1c1c; box-shadow: 0 0 25px 6px #ff1c1c; }
+        .light.yellow.on { background-color: #ffdd00; box-shadow: 0 0 25px 6px #ffdd00; }
+        .light.green.on { background-color: #00ff6a; box-shadow: 0 0 25px 6px #00ff6a; }
+    </style>
+</head>
+<body>
+    <div class="sun"></div>
+    <div class="cloud c1"></div>
+    <div class="cloud c2"></div>
+
+    <div class="grass"></div>
+
+    <div class="tree t1">
+        <div class="trunk"></div>
+        <div class="leaves"></div>
+    </div>
+    <div class="tree t2">
+        <div class="trunk"></div>
+        <div class="leaves"></div>
+    </div>
+
+    <div class="road"><div class="road-lines"></div></div>
+    <div class="pole"></div>
+    <div class="traffic-light">
+        <div id="red-light" class="light red" onclick="setLight('red')"></div>
+        <div id="yellow-light" class="light yellow" onclick="setLight('yellow')"></div>
+        <div id="green-light" class="light green" onclick="setLight('green')"></div>
+    </div>
+    <script>
+        function setLight(color) {
+            fetch('/set', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'light=' + color
+            });
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            const lightElements = {
+                red: document.getElementById('red-light'),
+                yellow: document.getElementById('yellow-light'),
+                green: document.getElementById('green-light')
+            };
+            function updateLightStatus() {
+                fetch('/state')
+                    .then(response => response.text())
+                    .then(state => {
+                        Object.values(lightElements).forEach(el => el.classList.remove('on'));
+                        if (state.includes('red')) { lightElements.red.classList.add('on'); }
+                        if (state.includes('yellow')) { lightElements.yellow.classList.add('on'); }
+                        if (state.includes('green')) { lightElements.green.classList.add('on'); }
+                    });
+            }
+            setInterval(updateLightStatus, 500);
+            updateLightStatus();
+        });
+    </script>
+</body>
+</html>
